@@ -1,0 +1,204 @@
+<?php
+
+/**
+ * Registers credit card payment gateway callbacks.
+ *
+ * Payment gateways handle credit card payments directly, without needing to
+ * redirect off-site.
+ *
+ */
+
+function uc_orbital_gateway_uc_payment_gateway() {
+   $gateways['uc_orbital_gateway'] = array(
+      'title' => t('Chase Payment Tech/Orbital Gateway'),
+      'description' => t('Process credit card payments through the Orbital Gateway.'),
+      'credit' => 'uc_orbital_gateway_charge',
+   );
+   return $gateways;
+}
+
+
+function uc_orbital_gateway_menu() {
+  $items = array();
+  $items['admin/settings/uc_orbital_gateway'] = array(
+    'title' => 'Orbital Gateway Settings',
+    'description' => 'Chase Paymentech Orbital gateway',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('uc_orbital_gateway_settings_form'),
+    'access arguments' => array('access administration pages'),
+    'type' => MENU_NORMAL_ITEM,
+   );
+  return $items;
+}
+
+
+/**
+ * Callback for payment gateway settings.
+ */
+function uc_orbital_gateway_settings_form($form, &$form_state) {
+  $form['uc_orbital_gateway'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Chase Paymentech Settings'),
+  );
+  $form['uc_orbital_gateway']['paymentech_orbital_username'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Orbital Username'),
+    '#default_value' => variable_get('paymentech_orbital_username', ''),
+    '#description' => t('Orbital Username for Paymentech Gateway.'),
+  );
+  $form['uc_orbital_gateway']['paymentech_orbital_password'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Orbital Password'),
+    '#default_value' => variable_get('paymentech_orbital_password', ''),
+    '#description' => t('Orbital Password for Paymentech Gateway.'),
+  );
+
+  $form['uc_orbital_gateway']['paymentech_orbital_test_username'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Orbital Test Username'),
+    '#default_value' => variable_get('paymentech_orbital_test_username', ''),
+    '#description' => t('Test Orbital Username for Paymentech Gateway.'),
+  );
+  $form['uc_orbital_gateway']['paymentech_orbital_test_password'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Orbital Test Password'),
+    '#default_value' => variable_get('paymentech_orbital_test_password', ''),
+    '#description' => t('Test Orbital Password for Paymentech Gateway.'),
+  );
+  $form['uc_orbital_gateway']['paymentech_merchant_id'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Merchant ID'),
+    '#default_value' => variable_get('paymentech_merchant_id', ''),
+    '#description' => t('Merchant ID for Paymentech Gateway.'),
+  );
+  $form['uc_orbital_gateway']['paymentech_terminal_id'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Terminal ID'),
+    '#default_value' => variable_get('paymentech_terminal_id', ''),
+    '#description' => t('Terminal ID for Paymentech Gateway.'),
+  );
+  $form['uc_orbital_gateway']['paymentech_bin'] = array(
+    '#type' => 'textfield',
+    '#title' => t('BIN'),
+    '#default_value' => variable_get('paymentech_bin', ''),
+    '#description' => t('BIN for Paymentech Gateway.'),
+  );
+  $form['uc_orbital_gateway']['paymentech_transaction_mode'] = array(
+    '#type' => 'select',
+    '#title' => t('Transaction Mode'),
+    '#description' => t('Are you testing your transaction processing or are you in production?.'),
+    '#options' => array(
+      'production' => t('Production'),
+      'test' => t('Test'),
+    ),
+    '#default_value' => variable_get('paymentech_transaction_mode', 'test'),
+  );
+
+  return system_settings_form($form);
+
+}
+
+
+/**
+ * Callback function to perform the charge operation.
+ *
+ * @return
+ *   Returns an array of artifacts from the processed credit card transaction
+ *   - "success"
+ *   - "comment"
+ *   - "message"
+ *   - "uid"
+ */
+function uc_orbital_gateway_charge($order_id, $amount, $data) {
+  global $user;
+  require_once 'includes/OrbitalClass.php';
+  $order = uc_order_load($order_id);
+
+  //Determine credit card type.
+  $number = $order->payment_details['cc_number'];
+  $id = substr($number, 0, 1);
+  $id_to_card_type = array(
+    '3' => 'AX',
+    '4' => 'VI',
+    '5' => 'MC',
+    '6' => 'DI',
+  );
+  $card_type = $id_to_card_type[$id];
+
+  //Pad single digits with zeros.
+  $exp_month = str_pad((int) $order->payment_details['cc_exp_month'], 2, '0', STR_PAD_LEFT);
+
+  $truncated_billing_street1 = (strlen($order->billing_street1) > 30) ? substr($order->billing_street1,0,30) : $order->billing_street1;
+
+  //Change amount format from xxxx.yy to xxxxyy for Chase.
+  $modified_amount = number_format($amount, 2, '', '');
+  $orb_processor = new OrbitalProcessor();
+
+  $orb_processor->address1 = $truncated_billing_street1;
+  $orb_processor->amount = $modified_amount;
+  $orb_processor->bin = variable_get('paymentech_bin');
+  $orb_processor->card_owner = $order->billing_first_name . ' ' . $order->billing_last_name;
+  $orb_processor->card_type = $card_type;
+  $orb_processor->cc_expiry_mon = $exp_month;
+  $orb_processor->cc_expiry_yr = substr($order->payment_details['cc_exp_year'], -2);
+  $orb_processor->cc_num = $order->payment_details['cc_number'];
+  $orb_processor->city = $order->billing_city;
+  $orb_processor->state = uc_get_zone_code($order->billing_zone);
+  $orb_processor->postal_code = $order->billing_postal_code;
+  $orb_processor->phone = $order->billing_phone;
+  $orb_processor->cvv =  $order->payment_details['cc_cvv'];
+  $orb_processor->industry_type = 'EC';
+  $orb_processor->message_type = 'A';
+  $orb_processor->ordernum = $order->order_id;
+  $orb_processor->processACPayment();
+
+  $response = $orb_processor->responseArray;
+
+  $respCode = $response['RespCode'];
+
+  $output = uc_orbital_gateway_format_response($response);
+
+  $transaction_message = $orb_processor->transactionMsg;
+  if ($respCode != '00') {
+   // Fail the charge with the reason text in the decline message.
+    $message = $transaction_message;
+    $result = array(
+      'success' => FALSE,
+      'message' => t('Credit card payment declined: @message', array('@message' => $orb_processor->transactionMsg)),
+      'uid' => $user->uid,
+    );
+  } else {
+  // Build a message for display and comments in the payments table.
+    $message = t('Type: auth<br />ID: @id', array('@id' => $orb_processor->tx_ref_num));
+    $result = array(
+      'success' => TRUE,
+      'comment' => $message,
+      'message' => $message,
+      'data' => array('module' => 'uc_orbital_gateway', 'txn_type' => 'auth', 'txn_id' => $orb_processor->tx_ref_num),
+      'uid' => $user->uid,
+    );
+  }
+  // Build an admin order comment.
+  $context = array(
+    'revision' => 'formatted-original',
+    'location' => 'paymentech-charge-comment',
+  );
+
+  // Remove credit card number before storing.
+  $output = preg_replace('/(AccountNum: [0-9]+)/', '', $output);
+
+  $comment = t('Type: @type, Status: @status: Response: @message, Amount: @amount', array('@type' => 'auth', '@status' => $result['success'] ? t('ACCEPTED') : t('REJECTED'), '@message' => $output, '@amount' => $amount));
+  // Save the comment to the order.
+  uc_order_comment_save($order->order_id, $user->uid, $comment, 'admin');
+
+  return $result;
+}
+
+function uc_orbital_gateway_format_response($response) {
+  $output = "";
+  foreach($response as $key => $value) {
+    $output .= $key . ": ";
+    $output .= $value . "\r\n";
+  }
+  return $output;
+}

@@ -1,0 +1,7 @@
+name = "Ubercart Orbital Gateway"
+description = "Provides a credit card gateway that uses the Chase PaymentTech/Orbital Gateway"
+dependencies[] = uc_payment
+dependencies[] = uc_credit
+core = 7.x
+hidden = FALSE
+
