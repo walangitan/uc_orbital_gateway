@@ -4,4 +4,3 @@ dependencies[] = uc_payment
 dependencies[] = uc_credit
 core = 7.x
 hidden = FALSE
-
