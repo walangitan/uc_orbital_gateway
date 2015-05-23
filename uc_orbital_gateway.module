@@ -43,7 +43,7 @@ function uc_orbital_gateway_settings_form($form, &$form_state) {
     '#type' => 'fieldset',
     '#title' => t('Chase Paymentech Settings'),
   );
-   $form['uc_orbital_gateway']['uc_orbital_gateway_username'] = array(
+  $form['uc_orbital_gateway']['uc_orbital_gateway_username'] = array(
     '#type' => 'textfield',
     '#title' => t('Orbital Username'),
     '#default_value' => decrypt(variable_get('uc_orbital_gateway_username', '')),
@@ -159,8 +159,17 @@ function uc_orbital_gateway_charge($order_id, $amount, $data) {
 
   if (empty($response_code)) {
     $status_message = $response['StatusMsg'];
+    $result = array(
+        'success' => FALSE,
+        'message' => t(
+            'Credit card payment declined: @message', array(
+              '@message' => $status_message,
+            )
+        ),
+        'uid' => $user->uid,
+      );
     drupal_set_message($status_message, 'error');
-  } 
+  }
   else {
     $output = uc_orbital_gateway_format_response($response);
     $transaction_message = $orb_processor->transactionMsg;
