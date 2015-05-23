@@ -37,52 +37,60 @@ function uc_orbital_gateway_menu() {
  */
 function uc_orbital_gateway_settings_form($form, &$form_state) {
 
+  $form['#encrypted_fields'] = TRUE;
+
   $form['uc_orbital_gateway'] = array(
     '#type' => 'fieldset',
     '#title' => t('Chase Paymentech Settings'),
   );
-  $form['uc_orbital_gateway']['uc_orbital_gateway_username'] = array(
+   $form['uc_orbital_gateway']['uc_orbital_gateway_username'] = array(
     '#type' => 'textfield',
     '#title' => t('Orbital Username'),
-    '#default_value' => variable_get('uc_orbital_gateway_username', ''),
+    '#default_value' => decrypt(variable_get('uc_orbital_gateway_username', '')),
     '#description' => t('Orbital Username for Paymentech Gateway.'),
+    '#encrypt' => TRUE,
   );
   $form['uc_orbital_gateway']['uc_orbital_gateway_password'] = array(
     '#type' => 'textfield',
     '#title' => t('Orbital Password'),
-    '#default_value' => variable_get('uc_orbital_gateway_password', ''),
+    '#default_value' => decrypt(variable_get('uc_orbital_gateway_password', '')),
     '#description' => t('Orbital Password for Paymentech Gateway.'),
+    '#encrypt' => TRUE,
   );
-
   $form['uc_orbital_gateway']['uc_orbital_gateway_test_username'] = array(
     '#type' => 'textfield',
     '#title' => t('Orbital Test Username'),
-    '#default_value' => variable_get('uc_orbital_gateway_test_username', ''),
+    '#default_value' => decrypt(variable_get('uc_orbital_gateway_test_username', '')),
     '#description' => t('Test Orbital Username for Paymentech Gateway.'),
+    '#encrypt' => TRUE,
   );
   $form['uc_orbital_gateway']['uc_orbital_gateway_test_password'] = array(
     '#type' => 'textfield',
     '#title' => t('Orbital Test Password'),
-    '#default_value' => variable_get('uc_orbital_gateway_test_password', ''),
+    '#default_value' => decrypt(variable_get('uc_orbital_gateway_test_password', '')),
     '#description' => t('Test Orbital Password for Paymentech Gateway.'),
+    '#encrypt' => TRUE,
   );
   $form['uc_orbital_gateway']['uc_orbital_gateway_merchant_id'] = array(
     '#type' => 'textfield',
     '#title' => t('Merchant ID'),
-    '#default_value' => variable_get('uc_orbital_gateway_merchant_id', ''),
+    '#default_value' => decrypt(variable_get('uc_orbital_gateway_merchant_id', '')),
     '#description' => t('Merchant ID for Paymentech Gateway.'),
+    '#encrypt' => TRUE,
   );
   $form['uc_orbital_gateway']['uc_orbital_gateway_terminal_id'] = array(
     '#type' => 'textfield',
     '#title' => t('Terminal ID'),
-    '#default_value' => variable_get('uc_orbital_gateway_terminal_id', ''),
+    '#default_value' => decrypt(variable_get('uc_orbital_gateway_terminal_id', '')),
     '#description' => t('Terminal ID for Paymentech Gateway.'),
+    '#encrypt' => TRUE,
   );
   $form['uc_orbital_gateway']['uc_orbital_gateway_bin'] = array(
     '#type' => 'textfield',
     '#title' => t('BIN'),
     '#default_value' => variable_get('uc_orbital_gateway_bin', ''),
     '#description' => t('BIN for Paymentech Gateway.'),
+    '#encrypt' => TRUE,
   );
   $form['uc_orbital_gateway']['uc_orbital_gateway_transaction_mode'] = array(
     '#type' => 'select',
@@ -130,7 +138,7 @@ function uc_orbital_gateway_charge($order_id, $amount, $data) {
 
   $orb_processor->address1 = $truncated_billing_street1;
   $orb_processor->amount = $modified_amount;
-  $orb_processor->bin = variable_get('uc_orbital_gateway_bin');
+  $orb_processor->bin = decrypt(variable_get('uc_orbital_gateway_bin'));
   $orb_processor->cardOwner = $order->billing_first_name . ' ' . $order->billing_last_name;
   $orb_processor->cardType = $card_type;
   $orb_processor->ccExpireMonth = $exp_month;
